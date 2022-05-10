@@ -10,26 +10,48 @@ const Home = () => {
   const [address, setAddress] = useState()
   const [localContract, setLocalContract] = useState()
   const [totalPot, setTotalPot] = useState(0)
+  const [lotteryHistory, setLotteryHistory] = useState([])
+  const [lotteryId, setLotteryId] = useState(0)
   const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
   //const [myTickets, setMyTickets] = useState()
 
-  useEffect(() => {
-    if (localContract) getTotalPot()
-  }, [localContract, totalPot])
+  useEffect(() => {    
+    updateLotteryInfo()
+  }, [localContract])
 
+  const updateLotteryInfo = () => {
+    if (localContract) {
+      getLotteryId()
+      getLotteryHistory()
+      getTotalPot()
+    }
+  }
+
+  const getLotteryId = async () => {
+    try {
+      const lotteryId = await localContract.methods.drawId().call()
+      setLotteryId(lotteryId)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
   const getTotalPot = async () => {
     try {
-      const owner = await localContract.methods.manager().call()
-      console.log("Owner: ", owner)
-      const pot = await localContract.methods.prizePoolTotal().call()
-      setTotalPot(web3.utils.fromWei(pot, 'ether'))
+      const totalPot = await localContract.methods.prizePoolTotal().call()
+      setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
-      //const pastDraws = await localContract.methods.pastDraws().call()
-      //console.log("PastDraws: ", pastDraws)
-
-      const drawId = await localContract.methods.drawId().call()
-      console.log("Draw ID: ", drawId)
+  const getLotteryHistory = async () => {
+    try {
+      for (let i = parseInt(lotteryId); i > 0; --i) {
+        const pastDraw = await localContract.methods.pastDraws(i).call()
+        console.log(pastDraw)
+        setLotteryHistory(lotteryHistory => [...lotteryHistory, pastDraw])
+      }
+      // console.log(lotteryHistory)
     } catch (err) {
       setError(err.message)
     }
@@ -54,6 +76,7 @@ const Home = () => {
         gas: 300000,
         gasPrice: null
       })
+      updateLotteryInfo()
     } catch (err) {
       setError(err.message)
     }
@@ -77,8 +100,13 @@ const Home = () => {
 
         const contract = powerballContract(web3)
         setLocalContract(contract)
+
+        /* register the accountsChanged event */
+        window.ethereum.on('accountsChanged', (accounts) => {
+          setAddress(accounts[0])
+          console.log("curr account: ", accounts[0])
+        })
       } catch (err) {
-        console.log('here')
         setError(err.message)
       }
     } else {
@@ -93,8 +121,8 @@ const Home = () => {
         gas: 1000000,
         gasPrice: null
       })
-      const winningTicket = await localContract.methods.winningTicket().call()
-      console.log(winningTicket)
+      // const winningTicket = await localContract.methods.winningTicket().call()
+      updateLotteryInfo()
     } catch (err) {
       setError(err.message)
     }
@@ -138,11 +166,6 @@ const Home = () => {
                 <section className="mt-6">
                   <div className="container has-text-danger">
                     <p>{error}</p>
-                  </div>
-                </section>
-                <section className="mt-6">
-                  <div className="container has-text-success">
-                    <p>{successMsg}</p>
                   </div>
                 </section>
               </div>
