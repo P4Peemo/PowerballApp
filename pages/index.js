@@ -1,59 +1,102 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Web3 from 'web3'
+import powerballContract from '../blockchain/powerball'
 import styles from '../styles/Home.module.css'
 import 'bulma/css/bulma.css'
 
 const Home = () => {
   const [web3, setWeb3] = useState()
   const [address, setAddress] = useState()
+  const [localContract, setLocalContract] = useState()
+  const [totalPot, setTotalPot] = useState(0)
+  const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+  //const [myTickets, setMyTickets] = useState()
 
-  const checkIfWalletIsConnected = async () => {
+  useEffect(() => {
+    if (localContract) getTotalPot()
+  }, [localContract, totalPot])
+
+  const getTotalPot = async () => {
     try {
-      const { ethereum } = window
+      const owner = await localContract.methods.manager().call()
+      console.log("Owner: ", owner)
+      const pot = await localContract.methods.prizePoolTotal().call()
+      setTotalPot(web3.utils.fromWei(pot, 'ether'))
 
-      if (!ethereum) {
-        console.log("Make sure you have Metamask installed.")
-      } else {
-        console.log("We have the Ethereum object.")
-      }
+      //const pastDraws = await localContract.methods.pastDraws().call()
+      //console.log("PastDraws: ", pastDraws)
 
-      const accounts = await ethereum.request({
-        method: "eth_accounts"
-      })
+      const drawId = await localContract.methods.drawId().call()
+      console.log("Draw ID: ", drawId)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
-      if (accounts.length != 0) {
-        const account = accounts[0]
-        console.log("Found an authorised account: ", account)
-      } else {
-        console.log("No authorised account found")
-      }
+  /*const getMyTickets = async () => {
+    try {
+      const tickets = await localContract.methods.getMyTickets().call()
+      console.log('Tickets: ', tickets)
+      setMyTickets(tickets)
     } catch (err) {
       console.log(err.message)
+    }
+  }*/
+
+  const placeBetHandler = async () => {
+    const betsToPlace = [[1,3,5,7,9,11,13,2]]
+    try {
+      await localContract.methods.play(betsToPlace).send({
+        from: address,
+        value: web3.utils.toWei('0.000001', 'ether'),
+        gas: 300000,
+        gasPrice: null
+      })
+    } catch (err) {
+      setError(err.message)
     }
   }
 
   const connectWalletHandler = async () => {
-    if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
+    setError('')
+    if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
       try {
-        await ethereum.request({
-          method: "eth_requestAccounts"
+        await window.ethereum.request({
+          method: 'eth_requestAccounts'
         })
-  
-        const web3 = new Web3(window.ethereum)
         /* set web3 instance to the react state */
+        const web3 = new Web3(window.ethereum)
         setWeb3(web3)
   
         /* get the list of accounts */
-        const accounts = web3.eth.getAccounts()
-
+        const accounts = await web3.eth.getAccounts()
         /* set first account to react state */
         setAddress(accounts[0])
+
+        const contract = powerballContract(web3)
+        setLocalContract(contract)
       } catch (err) {
-        console.log(err.message)
+        console.log('here')
+        setError(err.message)
       }
     } else {
-      alert("Please install Metamask.")
+      alert('Please install Metamask.')
+    }
+  }
+
+  const drawHandler = async () => {
+    try {
+      await localContract.methods.draw().send({
+        from: address,
+        gas: 1000000,
+        gasPrice: null
+      })
+      const winningTicket = await localContract.methods.winningTicket().call()
+      console.log(winningTicket)
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -82,11 +125,25 @@ const Home = () => {
               <div className="column is-two-thirds">
                 <section className="mt-5">
                   <p>Enter the lottery by sending 0.01 Ether</p>
-                  <button className="button is-link is-large is-light mt-3">Play Now</button>
+                  <button
+                    className="button is-link is-large is-light mt-3"
+                    onClick={placeBetHandler}>
+                    Play Now
+                  </button>
                 </section>
                 <section className="mt-6">
                   <p><b>Admin only: </b> Pick Winner</p>
-                  <button className="button is-primary is-large is-light mt-3">Pick Winner</button>
+                  <button className="button is-primary is-large is-light mt-3" onClick={drawHandler}>Pick Winner</button>
+                </section>
+                <section className="mt-6">
+                  <div className="container has-text-danger">
+                    <p>{error}</p>
+                  </div>
+                </section>
+                <section className="mt-6">
+                  <div className="container has-text-success">
+                    <p>{successMsg}</p>
+                  </div>
                 </section>
               </div>
               <div className={`${styles.lotteryinfo} column is-one-third`}>
@@ -119,8 +176,8 @@ const Home = () => {
                   <div className="card">
                     <div className="card-content">
                       <div className="content">
-                        <h2>Pot</h2>
-                        <p>10 Ether</p>
+                        <h2>Current Total Prize in Pool</h2>
+                        <p>{totalPot} Ether</p>
                       </div>
                     </div>
                   </div>
