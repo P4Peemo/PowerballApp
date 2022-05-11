@@ -16,8 +16,8 @@ const Home = () => {
   //const [myTickets, setMyTickets] = useState()
 
   useEffect(() => {    
-    updateLotteryInfo()
-  }, [localContract])
+    checkIfWalletIsConnected()
+  }, [])
 
   const updateLotteryInfo = () => {
     if (localContract) {
@@ -32,7 +32,7 @@ const Home = () => {
       const lotteryId = await localContract.methods.drawId().call()
       setLotteryId(lotteryId)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     }
   }
   const getTotalPot = async () => {
@@ -40,7 +40,7 @@ const Home = () => {
       const totalPot = await localContract.methods.prizePoolTotal().call()
       setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
     } catch (err) {
-      setError(err.message)
+      setError(err)
     }
   }
 
@@ -53,7 +53,7 @@ const Home = () => {
       }
       // console.log(lotteryHistory)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     }
   }
 
@@ -78,7 +78,34 @@ const Home = () => {
       })
       updateLotteryInfo()
     } catch (err) {
-      setError(err.message)
+      setError(err)
+    }
+  }
+
+  const checkIfWalletIsConnected = async () => {
+    if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
+      try {
+        const accounts = await window.ethereum.request({
+          method: 'eth_accounts'
+        })
+
+        if (accounts.length != 0) {
+          setAddress(accounts[0])
+          updateLotteryInfo()
+        } else {
+          console.log('No authorised account found')
+        }
+
+        /* register the accountsChanged event */
+        window.ethereum.on('accountsChanged', (accounts) => {
+          setAddress(accounts[0])
+        })
+      } catch (err) {
+        setError(err)
+      }
+    } else {
+      // we only warn the user when they try to connect the wallet
+      
     }
   }
 
@@ -101,13 +128,8 @@ const Home = () => {
         const contract = powerballContract(web3)
         setLocalContract(contract)
 
-        /* register the accountsChanged event */
-        window.ethereum.on('accountsChanged', (accounts) => {
-          setAddress(accounts[0])
-          console.log("curr account: ", accounts[0])
-        })
       } catch (err) {
-        setError(err.message)
+        setError(err)
       }
     } else {
       alert('Please install Metamask.')
@@ -124,7 +146,7 @@ const Home = () => {
       // const winningTicket = await localContract.methods.winningTicket().call()
       updateLotteryInfo()
     } catch (err) {
-      setError(err.message)
+      setError(err)
     }
   }
 
@@ -143,7 +165,25 @@ const Home = () => {
               <h1>Ether Powerball</h1>
             </div>
             <div className="navbar-end">
-              <button className="button is-link" onClick={connectWalletHandler}>Connect Wallet</button>
+              <div className="navbar-item">
+                <p>{address}</p>
+              </div>
+              <div className="buttons">
+                {address
+                  ?
+                  (<button
+                    className="button is-primary">
+                    Change Account
+                  </button>)
+                  :
+                  (<button
+                    className="button is-primary"
+                    onClick={connectWalletHandler}>
+                    Connect Wallet
+                  </button>)
+                }
+              </div>
+              
             </div>
           </div>
         </nav>
