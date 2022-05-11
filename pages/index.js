@@ -9,54 +9,54 @@ const Home = () => {
   const [web3, setWeb3] = useState()
   const [address, setAddress] = useState()
   const [localContract, setLocalContract] = useState()
+
+  const [contractOwner, setContractOwner] = useState()
   const [totalPot, setTotalPot] = useState(0)
   const [lotteryHistory, setLotteryHistory] = useState([])
   const [lotteryId, setLotteryId] = useState(0)
   const [error, setError] = useState('')
+
+  const [isOwner, setIsOwner] = useState(false)
   //const [myTickets, setMyTickets] = useState()
 
+  // Check if wallet is connect upon loading (once only)
   useEffect(() => {    
     checkIfWalletIsConnected()
   }, [])
 
-  const updateLotteryInfo = () => {
+  // Check contract info whenever the localContract is created
+  useEffect(() => {
     if (localContract) {
-      getLotteryId()
-      getLotteryHistory()
-      getTotalPot()
+      updateContractInfo()
+      updateLotteryInfo()
     }
+  }, [localContract])
+
+  const updateContractInfo = async () => {
+    const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
+    setContractOwner(contractOwner)
+    setIsOwner(address == contractOwner)
   }
 
-  const getLotteryId = async () => {
-    try {
-      const lotteryId = await localContract.methods.drawId().call()
-      setLotteryId(lotteryId)
-    } catch (err) {
-      setError(err)
-    }
-  }
-  const getTotalPot = async () => {
-    try {
-      const totalPot = await localContract.methods.prizePoolTotal().call()
-      setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
-    } catch (err) {
-      setError(err)
-    }
-  }
+  const updateLotteryInfo = async () => {
+    if (localContract) {
+      try {
+        const drawId = await localContract.methods.drawId().call()
+        const totalPot = await localContract.methods.prizePoolTotal().call()
 
-  const getLotteryHistory = async () => {
-    try {
-      for (let i = parseInt(lotteryId); i > 0; --i) {
-        const pastDraw = await localContract.methods.pastDraws(i).call()
-        console.log(pastDraw)
-        setLotteryHistory(lotteryHistory => [...lotteryHistory, pastDraw])
+        for (let i = parseInt(drawId); i > 0; --i) {
+          const pastDraw = await localContract.methods.pastDraws(i).call()
+          console.log(pastDraw)
+          setLotteryHistory(lotteryHistory => [...lotteryHistory, pastDraw])
+        }
+        setLotteryId(drawId)
+        
+        setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
+      } catch (err) {
+        setError(err)
       }
-      // console.log(lotteryHistory)
-    } catch (err) {
-      setError(err)
     }
   }
-
   /*const getMyTickets = async () => {
     try {
       const tickets = await localContract.methods.getMyTickets().call()
@@ -76,6 +76,7 @@ const Home = () => {
         gas: 300000,
         gasPrice: null
       })
+
       updateLotteryInfo()
     } catch (err) {
       setError(err)
@@ -89,6 +90,14 @@ const Home = () => {
           method: 'eth_accounts'
         })
 
+        /* set web3 instance to the react state */
+        const web3 = new Web3(window.ethereum)
+        setWeb3(web3)
+        
+        /* create local copy of the contract */
+        const contract = powerballContract(web3)
+        setLocalContract(contract)
+
         if (accounts.length != 0) {
           setAddress(accounts[0])
           updateLotteryInfo()
@@ -99,35 +108,27 @@ const Home = () => {
         /* register the accountsChanged event */
         window.ethereum.on('accountsChanged', (accounts) => {
           setAddress(accounts[0])
+          setIsOwner(accounts[0] == contractOwner)
         })
       } catch (err) {
         setError(err)
       }
     } else {
       // we only warn the user when they try to connect the wallet
-      
     }
   }
 
   const connectWalletHandler = async () => {
-    setError('')
     if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
       try {
         await window.ethereum.request({
           method: 'eth_requestAccounts'
         })
-        /* set web3 instance to the react state */
-        const web3 = new Web3(window.ethereum)
-        setWeb3(web3)
   
         /* get the list of accounts */
         const accounts = await web3.eth.getAccounts()
         /* set first account to react state */
         setAddress(accounts[0])
-
-        const contract = powerballContract(web3)
-        setLocalContract(contract)
-
       } catch (err) {
         setError(err)
       }
@@ -143,7 +144,7 @@ const Home = () => {
         gas: 1000000,
         gasPrice: null
       })
-      // const winningTicket = await localContract.methods.winningTicket().call()
+
       updateLotteryInfo()
     } catch (err) {
       setError(err)
@@ -164,26 +165,26 @@ const Home = () => {
             <div className="navbar-brand">
               <h1>Ether Powerball</h1>
             </div>
-            <div className="navbar-end">
-              <div className="navbar-item">
-                <p>{address}</p>
+            <div className="navbar-start">
+              <div className={`navbar-item ${styles.owner}`}>
+                <p>Contract Owner: {contractOwner}</p>
               </div>
-              <div className="buttons">
-                {address
-                  ?
-                  (<button
-                    className="button is-primary">
-                    Change Account
-                  </button>)
-                  :
-                  (<button
+            </div>
+            <div className="navbar-end">
+              {address
+                ?
+                (<div className="navbar-item">
+                  <p>Welcome, {address}!</p>
+                </div>)
+                :
+                (<div className="buttons">
+                  <button
                     className="button is-primary"
                     onClick={connectWalletHandler}>
                     Connect Wallet
-                  </button>)
-                }
-              </div>
-              
+                  </button>
+                </div>)
+              }
             </div>
           </div>
         </nav>
@@ -199,13 +200,15 @@ const Home = () => {
                     Play Now
                   </button>
                 </section>
-                <section className="mt-6">
-                  <p><b>Admin only: </b> Pick Winner</p>
-                  <button className="button is-primary is-large is-light mt-3" onClick={drawHandler}>Pick Winner</button>
-                </section>
+                {isOwner && 
+                  (<section className="mt-6">
+                    <p><b>Admin only: </b> Pick Winner</p>
+                    <button className="button is-primary is-large is-light mt-3" onClick={drawHandler}>Pick Winner</button>
+                  </section>)
+                }
                 <section className="mt-6">
                   <div className="container has-text-danger">
-                    <p>{error}</p>
+                    <p>{error.message}</p>
                   </div>
                 </section>
               </div>
