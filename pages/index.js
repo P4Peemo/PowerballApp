@@ -2,8 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Web3 from 'web3'
 import powerballContract from '../blockchain/powerball'
-import styles from '../styles/Home.module.css'
-import 'bulma/css/bulma.css'
+
+import 'animate.css'
+import { toast } from 'bulma-toast'
+import '@fortawesome/fontawesome-free/css/all.min.css'
+import styles from '../styles/Home.module.scss'
+
 
 const Home = () => {
   // function required to be used for state initialisation.
@@ -41,7 +45,7 @@ const Home = () => {
   const [ticketsToPlace, setTicketsToPlace] = useState(initialiseTickets())
 
   const didMount = useRef(false)
-  // Check if wallet is connect upon loading (once only)
+  // Check if wallet is connected upon loading (once only)
   useEffect(() => {    
     checkIfWalletIsConnected()
   }, [])
@@ -185,7 +189,14 @@ const Home = () => {
         /* set web3 instance to the react state */
         const web3 = new Web3(window.ethereum)
         setWeb3(web3)
-        
+        toast({
+          message: 'Hello There',
+          type: 'is-success',
+          duration: 2000,
+          pauseOnHover: true,
+          closeOnClick: true,
+          animate: { in: 'fadeIn', out: 'fadeOut' },
+        })
         /* create local copy of the contract */
         const contract = powerballContract(web3)
         setLocalContract(contract)
@@ -359,32 +370,36 @@ const Home = () => {
       </Head>
 
       <main className={styles.main}>
-        <nav className="navbar mt-4 mb-4">
-          <div className="container">
-            <div className="navbar-brand">
-              <h1>Ether Powerball</h1>
+        <nav className="navbar m-4">
+          <div className="navbar-brand">
+            <div className="navbar-item is-vcentered">
+              <img src="/logo.jpg" />
             </div>
-            <div className="navbar-start">
-              <div className={`navbar-item ${styles.owner}`}>
-                <p>Contract Owner: {contractOwner}</p>
-              </div>
+            <div className={`navbar-item ${styles.brand}`}>
+              <h1>Ethereum Powerball</h1>
+              <span>Still Powerball, but the more decentralised way.</span>
             </div>
-            <div className="navbar-end">
-              {address
-                ?
-                (<div className="navbar-item">
-                  <p>Welcome, {address}!</p>
-                </div>)
-                :
-                (<div className="buttons">
-                  <button
-                    className="button is-primary"
-                    onClick={connectWalletHandler}>
-                    Connect Wallet
-                  </button>
-                </div>)
-              }
-            </div>
+          </div>
+          <div className="navbar-end">
+            
+            {address
+              ?
+              (<div className="navbar-item icon-text">
+                <span className="icon has-text-success">
+                  <i className="fas fa-check-square"></i>
+                </span>
+                <span className="has-tooltip-arrow has-tooltip-left has-tooltip-primary"
+                  data-tooltip={address}>Wallet is connected</span>
+              </div>)
+              :
+              (<div className="navbar-item">
+                <button
+                  className="button is-primary"
+                  onClick={connectWalletHandler}>
+                  Connect Wallet
+                </button>
+              </div>)
+            }
           </div>
         </nav>
         <div className="container">
@@ -515,3 +530,9 @@ const Home = () => {
 }
 
 export default Home
+
+{/* <div className="navbar-start">
+            <div className={`navbar-item ${styles.owner}`}>
+              <p>Contract Owner: {contractOwner}</p>
+            </div>
+          </div> */}
