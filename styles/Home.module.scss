@@ -8,6 +8,19 @@
   color: black;
 }
 
+.brand {
+  display: block;
+}
+
+.brand h1 {
+  font-style: italic;
+}
+
+.brand span {
+  font-weight: bold;
+  display: block;
+}
+
 .gameRowCells {
   width: 100%;
 }
