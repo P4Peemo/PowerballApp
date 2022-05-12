@@ -11,6 +11,7 @@ const Home = () => {
   const [localContract, setLocalContract] = useState()
 
   const [contractOwner, setContractOwner] = useState()
+  const [ticketPrice, setTicketPrice] = useState(0) // stored in terms of ether
   const [totalPot, setTotalPot] = useState(0)
   const [lotteryHistory, setLotteryHistory] = useState([])
   const [lotteryId, setLotteryId] = useState(0)
@@ -18,6 +19,25 @@ const Home = () => {
 
   const [isOwner, setIsOwner] = useState(false)
   //const [myTickets, setMyTickets] = useState()
+
+  // current round of draw related
+  const [numOfTickets, setNumOfTickets] = useState(4)
+  const initialiseTickets = () => {
+    let tickets = []
+    const defaultTicket = () => {
+      return {
+        balls: new Array(7).fill(0),
+        powerball: 0
+      }
+    }
+  
+    [...Array(numOfTickets).keys()].forEach(i => {
+      tickets.push(defaultTicket())
+    })
+    return tickets
+  }
+  
+  const [ticketsToPlace, setTicketsToPlace] = useState(initialiseTickets())
 
   // Check if wallet is connect upon loading (once only)
   useEffect(() => {    
@@ -34,8 +54,11 @@ const Home = () => {
 
   const updateContractInfo = async () => {
     const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
+    const ticketPrice = await localContract.methods.ticketPrice().call()
     setContractOwner(contractOwner)
     setIsOwner(address == contractOwner)
+    setTicketPrice(parseInt(ticketPrice))
+    // setTicketPrice(parseFloat(web3.utils.fromWei(`${ticketPrice}`, 'ether')))
   }
 
   const updateLotteryInfo = async () => {
@@ -68,17 +91,28 @@ const Home = () => {
   }*/
 
   const placeBetHandler = async () => {
-    const betsToPlace = [[1,3,5,7,9,11,13,2]]
+    const sanitisedTickets = ticketsToPlace.map(ticket => {
+      ticket.balls = ticket.balls.sort((a, b) => a - b)
+      return [
+        ...ticket.balls,
+        ticket.powerball
+      ]
+    })
+
+    console.log(sanitisedTickets)
+    console.log(numOfTickets, ticketPrice, numOfTickets * ticketPrice)
     try {
-      await localContract.methods.play(betsToPlace).send({
+      await localContract.methods.play(sanitisedTickets).send({
         from: address,
-        value: web3.utils.toWei('0.000001', 'ether'),
-        gas: 300000,
+        value: numOfTickets * ticketPrice,
+        // value: web3.utils.toWei(`${numOfTickets * ticketPrice}`, 'ether'),
+        gas: 1000000,
         gasPrice: null
       })
 
       updateLotteryInfo()
     } catch (err) {
+      console.log('error here')
       setError(err)
     }
   }
@@ -151,6 +185,100 @@ const Home = () => {
     }
   }
 
+  const changeNumOfTicketsHandler = e => {
+    setNumOfTickets(parseInt(e.target.value))
+  }
+
+  const selectNumberHandler = (e, ticketId, isPbRow) => {
+    let ticket = ticketsToPlace[ticketId]
+    const selectNumber = (value, ticket, isPbRow) => {
+      if (isPbRow) {
+        ticket.powerball = value
+      } else {
+        let balls = ticket.balls
+        balls[balls.findIndex(ball => ball == 0)] = value
+      }
+
+      return ticket
+    }
+  
+    const unselectNumber = (value, ticket, isPbRow) => {
+      if (isPbRow) {
+        ticket.powerball = 0
+      } else {
+        let balls = ticket.balls
+        balls[balls.findIndex(ball => ball == value)] = 0
+      }
+      return ticket
+    }
+    const isChecked = e.target.checked
+    const targetValue = parseInt(e.target.value)
+    if (isChecked) {
+      ticket = selectNumber(targetValue, ticket, isPbRow)
+    } else {
+      ticket = unselectNumber(targetValue, ticket, isPbRow)
+    }
+    let modifiedTickets = ticketsToPlace.slice(0, ticketId)
+    modifiedTickets.push(ticket)
+    modifiedTickets = modifiedTickets.concat(ticketsToPlace.slice(ticketId+1, numOfTickets))
+    console.log(modifiedTickets)
+    setTicketsToPlace(modifiedTickets)
+  }
+
+  const checkDisabled = (ticketId, value, isPbRow) => {
+    const ticket = ticketsToPlace[ticketId]
+    if (isPbRow) {
+      return ticket.powerball != value &&
+      ticket.powerball != 0
+    } else {
+      return !ticket.balls.includes(value) &&
+      (ticket.balls.findIndex(elem => elem == 0) == -1)
+    }
+  }
+
+  const numberTableRowHTML = (idArray, ticketId, isPbRow) => (
+    <tr>
+      {
+        idArray.map(i => (
+          <td key={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>
+            <input type="checkbox" id={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}
+              value={`${i}`} onChange={e => selectNumberHandler(e, ticketId, isPbRow)}
+              disabled={checkDisabled(ticketId, i, isPbRow)}/>
+            <label htmlFor={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>{i}</label>
+          </td>
+        ))
+      }
+    </tr>
+  )
+
+  const selectNumbersHTML = _ => (
+    [...Array(numOfTickets).keys()].map(ticketId => {
+      return (
+        <div className="gameRowContainer" key={`Ticket ${ticketId + 1}`}>
+          <span>Ticket {ticketId + 1}</span>
+          <div className="gameRowCells">
+            <div className="gameRowCell"></div>
+          </div>
+          <div className="numberPicker">
+            <table className="table">
+              <tbody>
+                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+1), ticketId, false) }
+                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+11), ticketId, false) }
+                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+21), ticketId, false) }
+                { numberTableRowHTML(Array.from({length: 5},(v,k)=>k+31), ticketId, false) }
+                <tr className="sectionRow">
+                  <td colSpan="10">Select Powerball</td>
+                </tr>
+                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+1), ticketId, true) }
+                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+11), ticketId, true) }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    })
+  )
+
   return (
     <div>
       <Head>
@@ -189,6 +317,40 @@ const Home = () => {
           </div>
         </nav>
         <div className="container">
+          <div className="columns">
+            <div className="column">
+              <h1>Total prize in pool: {totalPot} Ether</h1>
+            </div>
+            <div className="column">
+              <h1>Number of tickets in pool: </h1>
+            </div>
+            <div className="column">
+              <h1>Ticket Price: {ticketPrice} Wei</h1>
+            </div>
+          </div>
+        </div>
+        <div className="container playForm">
+            <section className="chooseQuantity">
+              <div className="title">
+                <div>1. Select number of games:</div>
+              </div>
+              <div className="select">
+                <select onChange={changeNumOfTicketsHandler}>
+                  <option value="4">4 Games - {4 * ticketPrice} Wei</option>
+                  <option value="5">5 Games - {5 * ticketPrice} Wei</option>
+                  <option value="6">6 Games - {6 * ticketPrice} Wei</option>
+                  <option value="7">7 Games - {7 * ticketPrice} Wei</option>
+                  <option value="8">8 Games - {8 * ticketPrice} Wei</option>
+                  <option value="9">9 Games - {9 * ticketPrice} Wei</option>
+                  <option value="10">10 Games - {10 * ticketPrice} Wei</option>
+                </select>
+              </div>
+            </section>
+            <section className="selectTickets">
+              {selectNumbersHTML()}
+            </section>
+        </div>
+        <div className="container">
           <section className="mt-5 ">
             <div className="columns">
               <div className="column is-two-thirds">
@@ -212,7 +374,7 @@ const Home = () => {
                   </div>
                 </section>
               </div>
-              <div className={`${styles.lotteryinfo} column is-one-third`}>
+              <div className={`${styles.lotteryInfo} column is-one-third`}>
                 <section className="mt-5">
                   <div className="card">
                     <div className="card-content">
