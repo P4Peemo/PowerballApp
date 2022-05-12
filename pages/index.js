@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Web3 from 'web3'
 import powerballContract from '../blockchain/powerball'
@@ -18,8 +18,7 @@ const Home = () => {
   const [error, setError] = useState('')
 
   const [isOwner, setIsOwner] = useState(false)
-  //const [myTickets, setMyTickets] = useState()
-
+  const [myTicketsInPool, setMyTicketsInPool] = useState()
   // current round of draw related
   const [numOfTickets, setNumOfTickets] = useState(4)
   const initialiseTickets = () => {
@@ -39,6 +38,7 @@ const Home = () => {
   
   const [ticketsToPlace, setTicketsToPlace] = useState(initialiseTickets())
 
+  const didMount = useRef(false)
   // Check if wallet is connect upon loading (once only)
   useEffect(() => {    
     checkIfWalletIsConnected()
@@ -46,11 +46,21 @@ const Home = () => {
 
   // Check contract info whenever the localContract is created
   useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true
+      return
+    }
     if (localContract) {
       updateContractInfo()
       updateLotteryInfo()
     }
   }, [localContract])
+
+  useEffect(() => {
+    if (localContract && address) {
+      getMyTickets()
+    }
+  }, [address])
 
   const updateContractInfo = async () => {
     const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
@@ -80,15 +90,30 @@ const Home = () => {
       }
     }
   }
-  /*const getMyTickets = async () => {
+  const getMyTickets = async () => {
     try {
-      const tickets = await localContract.methods.getMyTickets().call()
-      console.log('Tickets: ', tickets)
-      setMyTickets(tickets)
+      const ticketsString = await localContract.methods.getMyTickets().call({
+        from: address
+      })
+
+      const ticketLength = 17
+      let tickets = []
+      let rawTicket = []
+      console.log('tkt str: ', ticketsString)
+      for (let i = 0; i < ticketsString.length; i += ticketLength) {
+        rawTicket = JSON.parse(ticketsString.slice(i, i + ticketLength))
+        const formattedTicket = {
+          balls: rawTicket.slice(0, 7),
+          powerball: rawTicket[7]
+        }
+        tickets.push(formattedTicket)
+      }
+      console.log(tickets)
+      setMyTicketsInPool(tickets)
     } catch (err) {
       console.log(err.message)
     }
-  }*/
+  }
 
   const placeBetHandler = async () => {
     const sanitisedTickets = ticketsToPlace.map(ticket => {
@@ -98,21 +123,18 @@ const Home = () => {
         ticket.powerball
       ]
     })
-
-    console.log(sanitisedTickets)
-    console.log(numOfTickets, ticketPrice, numOfTickets * ticketPrice)
     try {
       await localContract.methods.play(sanitisedTickets).send({
         from: address,
         value: numOfTickets * ticketPrice,
         // value: web3.utils.toWei(`${numOfTickets * ticketPrice}`, 'ether'),
-        gas: 1000000,
+        // gas: 1000000,
         gasPrice: null
       })
-
+      
+      getMyTickets()
       updateLotteryInfo()
     } catch (err) {
-      console.log('error here')
       setError(err)
     }
   }
@@ -175,7 +197,6 @@ const Home = () => {
     try {
       await localContract.methods.draw().send({
         from: address,
-        gas: 1000000,
         gasPrice: null
       })
 
@@ -211,6 +232,7 @@ const Home = () => {
       }
       return ticket
     }
+
     const isChecked = e.target.checked
     const targetValue = parseInt(e.target.value)
     if (isChecked) {
@@ -218,10 +240,10 @@ const Home = () => {
     } else {
       ticket = unselectNumber(targetValue, ticket, isPbRow)
     }
+
     let modifiedTickets = ticketsToPlace.slice(0, ticketId)
     modifiedTickets.push(ticket)
     modifiedTickets = modifiedTickets.concat(ticketsToPlace.slice(ticketId+1, numOfTickets))
-    console.log(modifiedTickets)
     setTicketsToPlace(modifiedTickets)
   }
 
@@ -234,6 +256,19 @@ const Home = () => {
       return !ticket.balls.includes(value) &&
       (ticket.balls.findIndex(elem => elem == 0) == -1)
     }
+  }
+
+  const ticketInfoHTML = (ticket) => {
+    return (
+      <div className={styles.gameRowCells}>
+        {
+          [...Array(7).keys()].map(i => (
+            <div className={styles.gameRowCell}>{ticket.balls[i] == 0 ? '-' : ticket.balls[i]}</div>
+          ))
+        }
+        <div className={styles.powerballCell}>{ticket.powerball == 0 ? '-' : ticket.powerball}</div>
+      </div>
+    )    
   }
 
   const numberTableRowHTML = (idArray, ticketId, isPbRow) => (
@@ -256,9 +291,7 @@ const Home = () => {
       return (
         <div className="gameRowContainer" key={`Ticket ${ticketId + 1}`}>
           <span>Ticket {ticketId + 1}</span>
-          <div className="gameRowCells">
-            <div className="gameRowCell"></div>
-          </div>
+          {ticketInfoHTML(ticketsToPlace[ticketId])}
           <div className="numberPicker">
             <table className="table">
               <tbody>
@@ -355,7 +388,6 @@ const Home = () => {
             <div className="columns">
               <div className="column is-two-thirds">
                 <section className="mt-5">
-                  <p>Enter the lottery by sending 0.01 Ether</p>
                   <button
                     className="button is-link is-large is-light mt-3"
                     onClick={placeBetHandler}>

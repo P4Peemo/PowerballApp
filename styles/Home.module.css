@@ -8,6 +8,20 @@
   color: black;
 }
 
+.gameRowCells {
+  width: 100%;
+}
+
+.gameRowCell {
+  display: inline-block;
+  border: 1px solid black;
+}
+
+.powerballCell {
+  display: inline-block;
+  border: 1px solid black;
+}
+
 .lotteryInfo a {
   font-size: 0.9em;
 }
