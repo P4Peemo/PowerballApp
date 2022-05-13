@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Web3 from 'web3'
 import powerballContract from '../blockchain/powerball'
+import { toast } from 'bulma-toast'
+import moment from 'moment'
 
 import 'animate.css'
-import { toast } from 'bulma-toast'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import styles from '../styles/Home.module.scss'
+
 import Collapsible from '../components/collapsible'
 
 const Home = () => {
@@ -94,7 +96,7 @@ const Home = () => {
           }
           const sanitisedPastDraw = {
             drawId: parseInt(pastDraw.drawId),
-            drawTime: pastDraw.drawTime,
+            drawTime: moment(pastDraw.drawTime * 1000).format('MMMM Do YYYY, hh:mm:ss a'),
             winningTicket
           }
           lotteryHistory.push(sanitisedPastDraw)
@@ -337,10 +339,13 @@ const Home = () => {
             }
           </div>
         </nav>
+        <div className="container" style={{ 'margin': '0 auto 1em', 'text-align': 'right' }}>
+          Contract Owner: {contractOwner}
+        </div>
         <div className="container">
           <div className="columns" style={{ 'textAlign': 'center' }}>
             <div className="column is-half">
-              <article className="message is-info is-large">
+              <article className="message is-info is-large is-dark">
                 <div className="message-header" style={{ 'display': 'block' }}>
                   <p>Total prize currently in the pool (Round {lotteryId + 1}):</p>
                 </div>
@@ -397,24 +402,24 @@ const Home = () => {
                     <Collapsible />
                   </section>
                 </div>
-                <section className="mt-5">
+                <section className="mt-5" style={{ 'textAlign': 'right' }}>
                   <button
-                    className="button is-link is-large is-light mt-3"
+                    className="button is-info is-light is-medium mt-3"
                     onClick={placeBetHandler}>
                     Play Now
                   </button>
                 </section>
-                <section className="mt-5">
+                <section className="mt-5" style={{ 'textAlign': 'right' }}>
                   <button
-                    className="button is-link is-large is-light mt-3"
+                    className="button is-link is-light is-medium mt-3"
                     onClick={withdrawHandler}>
                     Withdraw my rewards
                   </button>
                 </section>
                 {isOwner && 
-                  (<section className="mt-6">
+                  (<section className="mt-6" style={{ 'textAlign': 'right' }}>
                     <p><b>Admin only: </b> Pick Winner</p>
-                    <button className="button is-primary is-large is-light mt-3" onClick={drawHandler}>Pick Winner</button>
+                    <button className="button is-danger is-light is-medium mt-3" onClick={drawHandler}>Pick Winner</button>
                   </section>)
                 }
                 <section className="mt-6">
@@ -426,14 +431,17 @@ const Home = () => {
               <div className={`${styles.lotteryInfo} column is-one-third`}>
                 <section>
                   <div className="card">
-                    <div className="card-content">
+                    <div className="card-content" style={{ 'padding': '1em' }}>
                       <div className="content">
-                        <h2>Lottery History</h2>
+                        <h3>Lottery History</h3>
+                        <hr />
                         {
                           lotteryHistory.map((round, i) => (
-                            <div className="ticket-entry" key={`round-${i}`}>
-                              <div>Lottery #{round.drawId + 1}</div>
-                              <div>{round.drawTime}</div>
+                            <div className={styles.ticketEntry} key={`round-${i}`}>
+                              <div className={styles.ticketEntryHeader}>
+                                <span>Lottery #{round.drawId + 1}</span>
+                                <span>{round.drawTime}</span>
+                              </div>
                               {ticketInfoHTML(round.winningTicket)}
                             </div>
                           ))
@@ -444,14 +452,15 @@ const Home = () => {
                 </section>
                 <section className="mt-5">
                   <div className="card">
-                    <div className="card-content">
+                    <div className="card-content" style={{ 'padding': '1em' }}>
                       <div className="content">
-                        <h2>My Tickets in Current Round (Round {lotteryId + 1})</h2>
+                        <h3>My Tickets (Round {lotteryId + 1})</h3>
+                        <hr />
                         {myTicketsInPool && (
                           <div className="ticket-entries">
                             {
                               myTicketsInPool.map((ticket, i) => (
-                                <div className="ticket-entry" key={`round-${i}`}>
+                                <div className={styles.ticketEntry} key={`round-${i}`}>
                                   {ticketInfoHTML(ticket)}
                                 </div>
                               ))

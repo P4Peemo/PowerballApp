@@ -80,6 +80,21 @@
   width: fit-content;
 }
 
+.ticketEntry {
+  margin: 1em auto 2em;
+}
+
+.ticketEntryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px auto;
+
+  span {
+    display: inline-block;
+  }
+}
+
 .footer {
   display: flex;
   flex: 1;
