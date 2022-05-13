@@ -21,13 +21,36 @@
   display: block;
 }
 
-.gameRowCells {
-  width: 100%;
+.iconContainer {
+  display: inline-block;
+  margin-left: 10px;
 }
 
-.gameRowCell {
+.ticketInfoContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  margin: 10px auto;
+  flex-wrap: wrap;
+  span {
+    display: inline-block;
+  }
+}
+
+.gameRowCells {
   display: inline-block;
-  border: 1px solid black;
+  div {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid black;
+  }
+}
+
+.powerballCell {
+  border-radius: 50%;
+  margin-left: 10px;
 }
 
 .powerballCell {

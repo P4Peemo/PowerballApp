@@ -7,21 +7,21 @@ import 'animate.css'
 import { toast } from 'bulma-toast'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import styles from '../styles/Home.module.scss'
-
+import Collapsible from '../components/collapsible'
 
 const Home = () => {
   // function required to be used for state initialisation.
-  const initialiseTickets = () => {
+  const initialiseTickets = (num) => {
     let tickets = []
     const defaultTicket = () => {
-      return {
+    return {
         balls: new Array(7).fill(0),
         powerball: 0
-      }
     }
-  
-    [...Array(numOfTickets).keys()].forEach(i => {
-      tickets.push(defaultTicket())
+    }
+
+    [...Array(num).keys()].forEach(i => {
+    tickets.push(defaultTicket())
     })
     return tickets
   }
@@ -35,6 +35,7 @@ const Home = () => {
   const [totalPot, setTotalPot] = useState(0)
   const [lotteryHistory, setLotteryHistory] = useState([])
   const [lotteryId, setLotteryId] = useState(0)
+  const [numOfTicketsInPool, setNumOfTicketsInPool] = useState(0)
   const [error, setError] = useState('')
 
   const [isOwner, setIsOwner] = useState(false)
@@ -42,8 +43,7 @@ const Home = () => {
 
   // current round of draw related
   const [numOfTickets, setNumOfTickets] = useState(4)
-  const [ticketsToPlace, setTicketsToPlace] = useState(initialiseTickets())
-
+  const [ticketsToPlace, setTicketsToPlace] = useState(initialiseTickets(numOfTickets))
   const didMount = useRef(false)
   // Check if wallet is connected upon loading (once only)
   useEffect(() => {    
@@ -80,11 +80,12 @@ const Home = () => {
   const updateLotteryInfo = async () => {
     if (localContract) {
       try {
-        const drawId = await localContract.methods.drawId().call()
+        const drawId = parseInt(await localContract.methods.drawId().call())
         const totalPot = await localContract.methods.prizePoolTotal().call()
+        const numOfTicketsInPool = await localContract.methods.counter().call()
 
         let lotteryHistory = []
-        for (let i = parseInt(drawId - 1); i >= 0; --i) {
+        for (let i = drawId - 1; i >= 0; --i) {
           const pastDraw = await localContract.methods.pastDraws(i).call()
           const balls = [...Array(7).keys()].map(i => pastDraw.winningTicket[i])
           const winningTicket = {
@@ -92,7 +93,7 @@ const Home = () => {
             powerball: pastDraw.winningTicket[7]
           }
           const sanitisedPastDraw = {
-            drawId: pastDraw.drawId,
+            drawId: parseInt(pastDraw.drawId),
             drawTime: pastDraw.drawTime,
             winningTicket
           }
@@ -102,6 +103,7 @@ const Home = () => {
         setLotteryHistory(lotteryHistory)
         setLotteryId(drawId)
         setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
+        setNumOfTicketsInPool(numOfTicketsInPool)
       } catch (err) {
         setError(err)
       }
@@ -116,22 +118,17 @@ const Home = () => {
 
       let tickets = []
       let rawTicket = []
-      
-      console.log(ticketsString, ticketsString.length)
+
       for (let i = 0; i < ticketsString.length;) {
         let ticketEnd = i
         while (ticketsString[ticketEnd] !==']' && ticketEnd < ticketsString.length) {
           ++ticketEnd
         }
-        console.log(i, ticketEnd)
-        console.log(ticketsString.slice(i, ticketEnd + 1))
         rawTicket = JSON.parse(ticketsString.slice(i, ticketEnd + 1))
-        console.log('raw ticket: ', rawTicket)
         const formattedTicket = {
           balls: rawTicket.slice(0, 7),
           powerball: rawTicket[7]
         }
-        console.log('formatted ticket: ', formattedTicket)
         tickets.push(formattedTicket)
         i = ticketEnd + 1
       }
@@ -163,6 +160,7 @@ const Home = () => {
         ticket.powerball
       ]
     })
+  
     try {
       await localContract.methods.play(sanitisedTickets).send({
         from: address,
@@ -255,59 +253,19 @@ const Home = () => {
   }
 
   const changeNumOfTicketsHandler = e => {
+    const updatedNum = parseInt(e.target.value)
+    let updatedTickets = []
+    if (updatedNum > numOfTickets) {
+      updatedTickets = [...ticketsToPlace, ...initialiseTickets(updatedNum - numOfTickets)]
+    }  else {
+      updatedTickets = ticketsToPlace.slice(0, updatedNum)
+    }
+
     setNumOfTickets(parseInt(e.target.value))
-  }
-
-  const selectNumberHandler = (e, ticketId, isPbRow) => {
-    let ticket = ticketsToPlace[ticketId]
-    const selectNumber = (value, ticket, isPbRow) => {
-      if (isPbRow) {
-        ticket.powerball = value
-      } else {
-        let balls = ticket.balls
-        balls[balls.findIndex(ball => ball == 0)] = value
-      }
-
-      return ticket
-    }
-  
-    const unselectNumber = (value, ticket, isPbRow) => {
-      if (isPbRow) {
-        ticket.powerball = 0
-      } else {
-        let balls = ticket.balls
-        balls[balls.findIndex(ball => ball == value)] = 0
-      }
-      return ticket
-    }
-
-    const isChecked = e.target.checked
-    const targetValue = parseInt(e.target.value)
-    if (isChecked) {
-      ticket = selectNumber(targetValue, ticket, isPbRow)
-    } else {
-      ticket = unselectNumber(targetValue, ticket, isPbRow)
-    }
-
-    let modifiedTickets = ticketsToPlace.slice(0, ticketId)
-    modifiedTickets.push(ticket)
-    modifiedTickets = modifiedTickets.concat(ticketsToPlace.slice(ticketId+1, numOfTickets))
-    setTicketsToPlace(modifiedTickets)
-  }
-
-  const checkDisabled = (ticketId, value, isPbRow) => {
-    const ticket = ticketsToPlace[ticketId]
-    if (isPbRow) {
-      return ticket.powerball != value &&
-      ticket.powerball != 0
-    } else {
-      return !ticket.balls.includes(value) &&
-      (ticket.balls.findIndex(elem => elem == 0) == -1)
-    }
+    setTicketsToPlace(updatedTickets)
   }
 
   const ticketInfoHTML = (ticket) => {
-    console.log(myTicketsInPool)
     return (
       <div className={styles.gameRowCells}>
         {
@@ -320,46 +278,9 @@ const Home = () => {
     )    
   }
 
-  const numberTableRowHTML = (idArray, ticketId, isPbRow) => (
-    <tr>
-      {
-        idArray.map(i => (
-          <td key={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>
-            <input type="checkbox" id={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}
-              value={`${i}`} onChange={e => selectNumberHandler(e, ticketId, isPbRow)}
-              disabled={checkDisabled(ticketId, i, isPbRow)}/>
-            <label htmlFor={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>{i}</label>
-          </td>
-        ))
-      }
-    </tr>
-  )
-
-  const selectNumbersHTML = _ => (
-    [...Array(numOfTickets).keys()].map(ticketId => {
-      return (
-        <div className="gameRowContainer" key={`Ticket ${ticketId + 1}`}>
-          <span>Ticket {ticketId + 1}</span>
-          {ticketInfoHTML(ticketsToPlace[ticketId])}
-          <div className="numberPicker">
-            <table className="table">
-              <tbody>
-                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+1), ticketId, false) }
-                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+11), ticketId, false) }
-                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+21), ticketId, false) }
-                { numberTableRowHTML(Array.from({length: 5},(v,k)=>k+31), ticketId, false) }
-                <tr className="sectionRow">
-                  <td colSpan="10">Select Powerball</td>
-                </tr>
-                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+1), ticketId, true) }
-                { numberTableRowHTML(Array.from({length: 10},(v,k)=>k+11), ticketId, true) }
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )
-    })
-  )
+  const updateTickets = (updatedTickets) => {
+    setTicketsToPlace(updatedTickets)
+  }
 
   return (
     <div>
@@ -381,7 +302,6 @@ const Home = () => {
             </div>
           </div>
           <div className="navbar-end">
-            
             {address
               ?
               (<div className="navbar-item icon-text">
@@ -404,14 +324,24 @@ const Home = () => {
         </nav>
         <div className="container">
           <div className="columns">
-            <div className="column">
-              <h1>Total prize in pool: {totalPot} Ether</h1>
-            </div>
-            <div className="column">
-              <h1>Number of tickets in pool: </h1>
-            </div>
-            <div className="column">
-              <h1>Ticket Price: {ticketPrice} Wei</h1>
+            <div className="column is-half">
+              <article className="message is-info is-large">
+                <div className="message-header">
+                  <p>Total prize currently in the pool (Round {lotteryId + 1}):</p>
+                </div>
+                <div className="message-body">
+                  <strong>{totalPot} Ether</strong>
+                </div>
+              </article>
+            </div><div className="column is-half">
+              <article className="message is-primary is-large">
+                <div className="message-header">
+                  <p>Number of tickets in pool:</p>
+                </div>
+                <div className="message-body">
+                  <strong>{numOfTicketsInPool}</strong>
+                </div>
+              </article>
             </div>
           </div>
         </div>
@@ -419,25 +349,35 @@ const Home = () => {
           <section className="mt-5 ">
             <div className="columns">
               <div className="column is-two-thirds">
-                <div className="container playForm">
-                  <section className="chooseQuantity">
-                    <div className="title">
-                      <div>1. Select number of games:</div>
+                <div className="container " style={{ 'padding': '10px' }}>
+                  <section className="form">
+                    <div className="field" style={{ 'fontSize': '1.5em' }}>
+                      <div className="label">1. Select number of games:</div>
+                      <div className="control">
+                        <div className="select is-rounded" style={ { 'marginLeft': '30px' }}>
+                          <select onChange={changeNumOfTicketsHandler}>
+                            <option value="4">4 Games - {4 * ticketPrice} Wei</option>
+                            <option value="5">5 Games - {5 * ticketPrice} Wei</option>
+                            <option value="6">6 Games - {6 * ticketPrice} Wei</option>
+                            <option value="7">7 Games - {7 * ticketPrice} Wei</option>
+                            <option value="8">8 Games - {8 * ticketPrice} Wei</option>
+                            <option value="9">9 Games - {9 * ticketPrice} Wei</option>
+                            <option value="10">10 Games - {10 * ticketPrice} Wei</option>
+                          </select>
+                        </div>
+                        <div className={styles.iconContainer}>
+                          <span data-tooltip="1 Ether converts to 1e18 Wei"><i className="fa-solid fa-circle-info"></i></span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="select">
-                      <select onChange={changeNumOfTicketsHandler}>
-                        <option value="4">4 Games - {4 * ticketPrice} Wei</option>
-                        <option value="5">5 Games - {5 * ticketPrice} Wei</option>
-                        <option value="6">6 Games - {6 * ticketPrice} Wei</option>
-                        <option value="7">7 Games - {7 * ticketPrice} Wei</option>
-                        <option value="8">8 Games - {8 * ticketPrice} Wei</option>
-                        <option value="9">9 Games - {9 * ticketPrice} Wei</option>
-                        <option value="10">10 Games - {10 * ticketPrice} Wei</option>
-                      </select>
+                    <div className="field">
+                      <div className="label">Select ticket entries</div>
+                      <Collapsible numOfTickets={numOfTickets} ticketsToPlace={ticketsToPlace}
+                        populateTicketInfo={ticketInfoHTML} updateTickets={updateTickets} />
                     </div>
                   </section>
-                  <section className="selectTickets">
-                    {selectNumbersHTML()}
+                  <section className="selectTickets" id="accordion-tickets">
+                    <Collapsible />
                   </section>
                 </div>
                 <section className="mt-5">
@@ -475,7 +415,7 @@ const Home = () => {
                         {
                           lotteryHistory.map((round, i) => (
                             <div className="ticket-entry" key={`round-${i}`}>
-                              <div>Lottery #{round.drawId}</div>
+                              <div>Lottery #{round.drawId + 1}</div>
                               <div>{round.drawTime}</div>
                               {ticketInfoHTML(round.winningTicket)}
                             </div>
