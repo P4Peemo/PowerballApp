@@ -26,26 +26,31 @@
   margin-left: 10px;
 }
 
-.ticketInfoContainer {
+
+
+.gameRowCells {
   display: flex;
+  justify-content: center;
   align-items: center;
-  justify-content: space-evenly;
-  margin: 10px auto;
-  flex-wrap: wrap;
-  span {
-    display: inline-block;
+
+  div:nth-last-child(2) {
+    border-right: 1px solid black;
   }
 }
 
-.gameRowCells {
+.gameRowCell {
   display: inline-block;
-  div {
-    display: inline-block;
-    width: 30px;
-    height: 30px;
-    text-align: center;
-    border: 1px solid black;
-  }
+  width: 2em;
+  height: 2em;
+  line-height: 2em;
+  text-align: center;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+  border-left: 1px solid black;
+}
+
+.activeCell {
+  border: 2px solid black !important;
 }
 
 .powerballCell {
@@ -55,6 +60,10 @@
 
 .powerballCell {
   display: inline-block;
+  width: 2em;
+  height: 2em;
+  line-height: 2em;
+  text-align: center;
   border: 1px solid black;
 }
 

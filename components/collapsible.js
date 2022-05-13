@@ -72,28 +72,39 @@ const Collapsible = (props) => {
         }
     }
 
+    const checkChecked = (ticketId, value, isPbRow) => {
+        const ticket = ticketsToPlace[ticketId]
+        if (isPbRow) {
+            return ticket.powerball == value
+        } else {
+            return ticket.balls.includes(value)
+        }
+    }
+
     const numberTableRowHTML = (idArray, ticketId, isPbRow) => (
         <tr>
             {
                 idArray.map(i => (
-                    <td key={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>
+                    <td className={styles.ticketNumber} key={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>
                         <input type="checkbox" id={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}
                         value={`${i}`} onChange={e => selectNumberHandler(e, ticketId, isPbRow)}
-                        disabled={checkDisabled(ticketId, i, isPbRow)}/>
+                        disabled={checkDisabled(ticketId, i, isPbRow)}
+                        checked={checkChecked(ticketId, i, isPbRow)}/>
                         <label htmlFor={`ticket-${ticketId}${isPbRow ? '-pb' : ''}-${i}`}>{i}</label>
                     </td>
                 ))
             }
         </tr>
     )
+
     return (
         <div className="accordion" onClick={toggleHandler}>
             {ticketsToPlace && (
                 [...Array(numOfTickets).keys()].map(ticketId => {
                 return (
-                    <div className="accordionItem" key={`Ticket ${ticketId + 1}`}>
+                    <div className={styles.accordionItem} key={`Ticket ${ticketId + 1}`}>
                         <div className={styles.accordion}>
-                            <span>Ticket {ticketId + 1}</span>
+                            <span className="is-vcentered">Ticket {ticketId + 1}</span>
                             {populateTicketInfo(ticketsToPlace[ticketId])}
                         </div>
                         <div className={styles.panel}>

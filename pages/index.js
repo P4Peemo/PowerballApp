@@ -265,15 +265,20 @@ const Home = () => {
     setTicketsToPlace(updatedTickets)
   }
 
+  const checkActiveCell = (ticket, index) => {
+    const ticketNums = [...ticket.balls, ticket.powerball]
+    return ticketNums.findIndex(ball => ball == 0) == index
+  }
+
   const ticketInfoHTML = (ticket) => {
     return (
       <div className={styles.gameRowCells}>
         {
           [...Array(7).keys()].map(i => (
-            <div className={styles.gameRowCell} key={`cell-${i+1}`}>{ticket.balls[i] == 0 ? '-' : ticket.balls[i]}</div>
+            <div className={styles.gameRowCell + (checkActiveCell(ticket, i) ? (' ' + styles.activeCell) : '')} key={`cell-${i+1}`}>{ticket.balls[i] == 0 ? '' : ticket.balls[i]}</div>
           ))
         }
-        <div className={styles.powerballCell}>{ticket.powerball == 0 ? '-' : ticket.powerball}</div>
+        <div className={styles.powerballCell + (checkActiveCell(ticket, 7) ? (' ' + styles.activeCell) : '')}>{ticket.powerball == 0 ? '' : ticket.powerball}</div>
       </div>
     )    
   }
@@ -323,10 +328,10 @@ const Home = () => {
           </div>
         </nav>
         <div className="container">
-          <div className="columns">
+          <div className="columns" style={{ 'textAlign': 'center' }}>
             <div className="column is-half">
               <article className="message is-info is-large">
-                <div className="message-header">
+                <div className="message-header" style={{ 'display': 'block' }}>
                   <p>Total prize currently in the pool (Round {lotteryId + 1}):</p>
                 </div>
                 <div className="message-body">
@@ -335,7 +340,7 @@ const Home = () => {
               </article>
             </div><div className="column is-half">
               <article className="message is-primary is-large">
-                <div className="message-header">
+                <div className="message-header" style={{ 'display': 'block' }}>
                   <p>Number of tickets in pool:</p>
                 </div>
                 <div className="message-body">
@@ -345,6 +350,7 @@ const Home = () => {
             </div>
           </div>
         </div>
+        <hr />
         <div className="container">
           <section className="mt-5 ">
             <div className="columns">
@@ -352,7 +358,7 @@ const Home = () => {
                 <div className="container " style={{ 'padding': '10px' }}>
                   <section className="form">
                     <div className="field" style={{ 'fontSize': '1.5em' }}>
-                      <div className="label">1. Select number of games:</div>
+                      <div className="label">Select number of games:</div>
                       <div className="control">
                         <div className="select is-rounded" style={ { 'marginLeft': '30px' }}>
                           <select onChange={changeNumOfTicketsHandler}>
@@ -407,7 +413,7 @@ const Home = () => {
                 </section>
               </div>
               <div className={`${styles.lotteryInfo} column is-one-third`}>
-                <section className="mt-5">
+                <section>
                   <div className="card">
                     <div className="card-content">
                       <div className="content">
@@ -429,7 +435,7 @@ const Home = () => {
                   <div className="card">
                     <div className="card-content">
                       <div className="content">
-                        <h2>My Tickets</h2>
+                        <h2>My Tickets in Current Round (Round {lotteryId + 1})</h2>
                         {myTicketsInPool && (
                           <div className="ticket-entries">
                             {
@@ -441,16 +447,6 @@ const Home = () => {
                             }
                           </div>)
                         }
-                      </div>
-                    </div>
-                  </div>
-                </section>
-                <section className="mt-5">
-                  <div className="card">
-                    <div className="card-content">
-                      <div className="content">
-                        <h2>Current Total Prize in Pool</h2>
-                        <p>{totalPot} Ether</p>
                       </div>
                     </div>
                   </div>
