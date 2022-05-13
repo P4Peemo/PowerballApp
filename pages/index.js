@@ -270,15 +270,25 @@ const Home = () => {
     return ticketNums.findIndex(ball => ball == 0) == index
   }
 
-  const ticketInfoHTML = (ticket) => {
+  const ticketInfoHTML = (ticket, isPanelActive=false) => {
     return (
       <div className={styles.gameRowCells}>
         {
           [...Array(7).keys()].map(i => (
-            <div className={styles.gameRowCell + (checkActiveCell(ticket, i) ? (' ' + styles.activeCell) : '')} key={`cell-${i+1}`}>{ticket.balls[i] == 0 ? '' : ticket.balls[i]}</div>
+            <div className={
+                styles.gameRowCell + (ticket.balls[i] == 0 ? '' : (' ' + styles.selectedCell)) +
+                (isPanelActive && checkActiveCell(ticket, i) ? (' ' + styles.activeCell) : '')
+              } key={`cell-${i+1}`}>
+              {ticket.balls[i] == 0 ? '' : ticket.balls[i]}
+            </div>
           ))
         }
-        <div className={styles.powerballCell + (checkActiveCell(ticket, 7) ? (' ' + styles.activeCell) : '')}>{ticket.powerball == 0 ? '' : ticket.powerball}</div>
+        <div className={
+            styles.powerballCell + (ticket.powerball == 0 ? '' : (' ' + styles.selectedCell)) +
+            (isPanelActive && checkActiveCell(ticket, 7) ? (' ' + styles.activeCell) : '')
+          }>
+          {ticket.powerball == 0 ? 'PB' : ticket.powerball}
+        </div>
       </div>
     )    
   }
@@ -357,8 +367,8 @@ const Home = () => {
               <div className="column is-two-thirds">
                 <div className="container " style={{ 'padding': '10px' }}>
                   <section className="form">
-                    <div className="field" style={{ 'fontSize': '1.5em' }}>
-                      <div className="label">Select number of games:</div>
+                    <div className="field">
+                      <div className={styles.formLabel}>Select number of games</div>
                       <div className="control">
                         <div className="select is-rounded" style={ { 'marginLeft': '30px' }}>
                           <select onChange={changeNumOfTicketsHandler}>
@@ -376,8 +386,9 @@ const Home = () => {
                         </div>
                       </div>
                     </div>
+                    <hr />
                     <div className="field">
-                      <div className="label">Select ticket entries</div>
+                      <div className={styles.formLabel}>Select ticket entries</div>
                       <Collapsible numOfTickets={numOfTickets} ticketsToPlace={ticketsToPlace}
                         populateTicketInfo={ticketInfoHTML} updateTickets={updateTickets} />
                     </div>

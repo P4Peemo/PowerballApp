@@ -1,24 +1,34 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import styles from '../styles/Collapsible.module.scss'
 
 const Collapsible = (props) => {
+    const [activePanel, setActivePanel] = useState(-1)
     const { numOfTickets, ticketsToPlace, populateTicketInfo, updateTickets } = props
 
     const toggleHandler = e => {
         if (e.target.classList.contains(styles.accordion)) {
             const currElem = e.target
             const siblings = currElem.closest('.accordion').querySelectorAll(`.${styles.accordion}`)
-            let panel = currElem.nextElementSibling;
+
+            currElem.classList.toggle('active')
+            let panel = currElem.nextElementSibling
+
             if (panel.style.maxHeight) {
-                panel.style.maxHeight = null;
+                panel.style.maxHeight = null
             } else {
-                panel.style.maxHeight = panel.scrollHeight + "px";
+                panel.style.maxHeight = panel.scrollHeight + "px"
             }
 
-            siblings.forEach(el => {
+            siblings.forEach((el, i) => {
                 if (el !== currElem) {
                     el.classList.remove('active')
                     el.nextElementSibling.style.maxHeight = null
+                } else {
+                    if (currElem.classList.contains('active')) {
+                        setActivePanel(i)
+                    } else {
+                        setActivePanel(-1)
+                    }
                 }
             })
         }
@@ -104,8 +114,8 @@ const Collapsible = (props) => {
                 return (
                     <div className={styles.accordionItem} key={`Ticket ${ticketId + 1}`}>
                         <div className={styles.accordion}>
-                            <span className="is-vcentered">Ticket {ticketId + 1}</span>
-                            {populateTicketInfo(ticketsToPlace[ticketId])}
+                            <span>Ticket {ticketId + 1}</span>
+                            {populateTicketInfo(ticketsToPlace[ticketId], activePanel == ticketId)}
                         </div>
                         <div className={styles.panel}>
                             <table className="table" style={{ 'margin': '5px auto' }}>
