@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Web3 from 'web3'
 import powerballContract from '../blockchain/powerball'
-import { toast } from 'bulma-toast'
+import * as bulmaToast from 'bulma-toast'
 import moment from 'moment'
 
 import 'animate.css'
@@ -10,6 +10,14 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import styles from '../styles/Home.module.scss'
 
 import Collapsible from '../components/collapsible'
+
+bulmaToast.setDefaults({
+  duration: 2000,
+  position: 'top-center',
+  pauseOnHover: true,
+  closeOnClick: true,
+  animate: { in: 'fadeIn', out: 'fadeOut' },
+})
 
 const Home = () => {
   // function required to be used for state initialisation.
@@ -142,19 +150,24 @@ const Home = () => {
 
   const withdrawHandler = async () => {
     try {
-      const amount = await localContract.methods.withdraw().call({
-        from: address
+      const amount = await localContract.methods.withdraw().send({
+        from: address,
+        gas: 1000000
       })
 
-      // TODO set success message
-      console.log(amount)
+      bulmaToast.toast({
+        message: `Successfully withdrew ${web3.utils.fromWei(amount, 'ether')} ether.`,
+        type: 'is-success'
+      })
     } catch (err) {
-      setError(err)
+      bulmaToast.toast({
+        message: err.message,
+        type: 'is-danger'
+      })
     }
   }
 
   const placeBetHandler = async () => {
-    // TODO verify valid tickets before submitting
     const sanitisedTickets = ticketsToPlace.map(ticket => {
       ticket.balls = ticket.balls.sort((a, b) => a - b)
       return [
@@ -162,6 +175,20 @@ const Home = () => {
         ticket.powerball
       ]
     })
+
+    let isTicketsFilled = true
+
+    sanitisedTickets.forEach((ticket, i) => {
+      if (ticket.includes(0)) {
+        bulmaToast.toast({
+          message: `ticket-${i} contains unselected number(s).`,
+          type: 'is-warning'
+        })
+        isTicketsFilled = false
+      }
+    })
+
+    if (!isTicketsFilled) return
   
     try {
       await localContract.methods.play(sanitisedTickets).send({
@@ -175,7 +202,7 @@ const Home = () => {
       getMyTickets()
       updateLotteryInfo()
     } catch (err) {
-      setError(err)
+      bulmaToast.toast({message: err.message, type: 'is-danger'})
     }
   }
 
@@ -189,14 +216,7 @@ const Home = () => {
         /* set web3 instance to the react state */
         const web3 = new Web3(window.ethereum)
         setWeb3(web3)
-        toast({
-          message: 'Hello There',
-          type: 'is-success',
-          duration: 2000,
-          pauseOnHover: true,
-          closeOnClick: true,
-          animate: { in: 'fadeIn', out: 'fadeOut' },
-        })
+
         /* create local copy of the contract */
         const contract = powerballContract(web3)
         setLocalContract(contract)
@@ -214,11 +234,10 @@ const Home = () => {
           setIsOwner(accounts[0] == contractOwner)
         })
       } catch (err) {
-        setError(err)
+        bulmaToast.toast({message: err.message, type: 'is-danger'})
       }
-    } else {
-      // we only warn the user when they try to connect the wallet
     }
+    // we only warn the user when they try to connect the wallet
   }
 
   const connectWalletHandler = async () => {
@@ -233,10 +252,10 @@ const Home = () => {
         /* set first account to react state */
         setAddress(accounts[0])
       } catch (err) {
-        setError(err)
+        bulmaToast.toast({message: err.message, type: 'is-danger'})
       }
     } else {
-      alert('Please install Metamask.')
+      bulmaToast.toast({message: 'Please install Metamask.', type: 'is-danger'})
     }
   }
 
@@ -248,9 +267,13 @@ const Home = () => {
         gasPrice: null
       })
 
+      bulmaToast.toast({
+        message: `Winning ticket for round ${lotteryId + 1} has been announced.`,
+        type: 'is-success'
+      })
       updateLotteryInfo()
     } catch (err) {
-      setError(err)
+      bulmaToast.toast({message: `Open draw failed with: ${err.message}`, type: 'is-danger'})
     }
   }
 
