@@ -79,10 +79,10 @@ const Home = () => {
   }, [address])
 
   const updateContractInfo = async () => {
-    const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
+    const contractOwner = await localContract.methods.manager().call()
     const ticketPrice = await localContract.methods.ticketPrice().call()
     setContractOwner(contractOwner)
-    setIsOwner(address == contractOwner)
+    setIsOwner(address == contractOwner.toLowerCase())
     setTicketPrice(parseInt(ticketPrice))
     // setTicketPrice(parseFloat(web3.utils.fromWei(`${ticketPrice}`, 'ether')))
   }
@@ -149,10 +149,17 @@ const Home = () => {
   }
 
   const withdrawHandler = async () => {
+    if (!address) {
+      bulmaToast.toast({
+        message: 'Please connect your wallet first',
+        type: 'is-warning'
+      })
+    }
+
     try {
       const amount = await localContract.methods.withdraw().send({
         from: address,
-        gas: 1000000
+        gas: 3000000
       })
 
       bulmaToast.toast({
@@ -168,16 +175,23 @@ const Home = () => {
   }
 
   const placeBetHandler = async () => {
-    const sanitisedTickets = ticketsToPlace.map(ticket => {
+    if (!address) {
+      bulmaToast.toast({
+        message: 'Please connect your wallet first',
+        type: 'is-warning'
+      })
+    }
+  
+    let sanitisedTickets = []
+    ticketsToPlace.forEach(ticket => {
       ticket.balls = ticket.balls.sort((a, b) => a - b)
-      return [
+      sanitisedTickets.push([
         ...ticket.balls,
         ticket.powerball
-      ]
+      ])
     })
 
     let isTicketsFilled = true
-
     sanitisedTickets.forEach((ticket, i) => {
       if (ticket.includes(0)) {
         bulmaToast.toast({
@@ -191,14 +205,16 @@ const Home = () => {
     if (!isTicketsFilled) return
   
     try {
-      await localContract.methods.play(sanitisedTickets).send({
+      await localContract.methods.play([...sanitisedTickets]).send({
         from: address,
         value: numOfTickets * ticketPrice,
         // value: web3.utils.toWei(`${numOfTickets * ticketPrice}`, 'ether'),
-        // gas: 1000000,
-        gasPrice: null
+        gas: 3000000
       })
-      
+      bulmaToast.toast({
+        message: `Successfully placed ${numOfTickets} tickets.`,
+        type: 'is-success'
+      })
       getMyTickets()
       updateLotteryInfo()
     } catch (err) {
@@ -207,6 +223,7 @@ const Home = () => {
   }
 
   const checkIfWalletIsConnected = async () => {
+    console.log('check')
     if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
       try {
         const accounts = await window.ethereum.request({
@@ -225,13 +242,14 @@ const Home = () => {
           setAddress(accounts[0])
           updateLotteryInfo()
         } else {
-          console.log('No authorised account found')
+          bulmaToast.toast({message: 'No authorised account is found', type: 'is-warning'})
         }
 
         /* register the accountsChanged event */
         window.ethereum.on('accountsChanged', (accounts) => {
+          console.log(accounts)
           setAddress(accounts[0])
-          setIsOwner(accounts[0] == contractOwner)
+          setIsOwner(accounts[0] == contractOwner.toLowerCase())
         })
       } catch (err) {
         bulmaToast.toast({message: err.message, type: 'is-danger'})
@@ -261,9 +279,17 @@ const Home = () => {
 
   const drawHandler = async () => {
     // TODO schedule draw process rather than manually drawing
+    if (!address) {
+      bulmaToast.toast({
+        message: 'Please connect your wallet first',
+        type: 'is-warning'
+      })
+    }
+
     try {
       await localContract.methods.draw().send({
         from: address,
+        gas: 3000000,
         gasPrice: null
       })
 
@@ -271,6 +297,8 @@ const Home = () => {
         message: `Winning ticket for round ${lotteryId + 1} has been announced.`,
         type: 'is-success'
       })
+
+      getMyTickets()
       updateLotteryInfo()
     } catch (err) {
       bulmaToast.toast({message: `Open draw failed with: ${err.message}`, type: 'is-danger'})
@@ -362,7 +390,7 @@ const Home = () => {
             }
           </div>
         </nav>
-        <div className="container" style={{ 'margin': '0 auto 1em', 'text-align': 'right' }}>
+        <div className="container" style={{ 'margin': '0 auto 1em', 'textAlign': 'right' }}>
           Contract Owner: {contractOwner}
         </div>
         <div className="container">
