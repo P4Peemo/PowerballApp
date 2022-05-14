@@ -10,6 +10,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import styles from '../styles/Home.module.scss'
 
 import Collapsible from '../components/collapsible'
+import TicketInfo from '../components/ticket-info'
 
 bulmaToast.setDefaults({
   duration: 2000,
@@ -24,41 +25,60 @@ const Home = () => {
   const initialiseTickets = (num) => {
     let tickets = []
     const defaultTicket = () => {
-    return {
-        balls: new Array(7).fill(0),
-        powerball: 0
-    }
+      return {
+          balls: new Array(7).fill(0),
+          powerball: 0
+      }
     }
 
     [...Array(num).keys()].forEach(i => {
-    tickets.push(defaultTicket())
+      tickets.push(defaultTicket())
     })
+
     return tickets
   }
 
+  // web3 objects
   const [web3, setWeb3] = useState()
-  const [address, setAddress] = useState()
   const [localContract, setLocalContract] = useState()
 
+  // values that are fetched once and never change
   const [contractOwner, setContractOwner] = useState()
-  const [ticketPrice, setTicketPrice] = useState(0) // stored in terms of ether
-  const [totalPot, setTotalPot] = useState(0)
-  const [lotteryHistory, setLotteryHistory] = useState([])
-  const [lotteryId, setLotteryId] = useState(0)
-  const [numOfTicketsInPool, setNumOfTicketsInPool] = useState(0)
-  const [error, setError] = useState('')
+  const [ticketPrice, setTicketPrice] = useState(0) // stored in Wei
 
+  // values that need to be updated when address changes (including the values below for refetching)
+  const [address, setAddress] = useState()
   const [isOwner, setIsOwner] = useState(false)
+
+  // values that need refetching each time some variable changes
+  const [lotteryId, setLotteryId] = useState(0)
+  const [totalPot, setTotalPot] = useState(0) //stored in Ether
+  const [numOfTicketsInPool, setNumOfTicketsInPool] = useState(0)
+  const [lotteryHistory, setLotteryHistory] = useState([])
   const [myTicketsInPool, setMyTicketsInPool] = useState()
 
-  // current round of draw related
+  // ticket selection process
   const [numOfTickets, setNumOfTickets] = useState(4)
   const [ticketsToPlace, setTicketsToPlace] = useState(initialiseTickets(numOfTickets))
+
+  // loading indicators
+  const [isLoadingContractInfo, SetIsLoadingContractInfo] = useState(false)
+  const [isLoadingLotteryInfo, SetIsLoadingLotteryInfo] = useState(false)
   const didMount = useRef(false)
+
   // Check if wallet is connected upon loading (once only)
   useEffect(() => {    
     checkIfWalletIsConnected()
+    if (localContract) {
+      updateContractInfo()
+    }
   }, [])
+
+  useEffect(() => {
+    if (localContract) {
+      updateContractInfo()
+    }
+  }, [localContract])
 
   // Check contract info whenever the localContract is created
   useEffect(() => {
@@ -66,62 +86,54 @@ const Home = () => {
       didMount.current = true
       return
     }
+  
     if (localContract) {
-      updateContractInfo()
       updateLotteryInfo()
-    }
-  }, [localContract])
-
-  useEffect(() => {
-    if (localContract && address) {
-      getMyTickets()
     }
   }, [address])
 
   const updateContractInfo = async () => {
-    const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
-    const ticketPrice = await localContract.methods.ticketPrice().call()
-    setContractOwner(contractOwner)
-    setIsOwner(address == contractOwner)
-    setTicketPrice(parseInt(ticketPrice))
-    // setTicketPrice(parseFloat(web3.utils.fromWei(`${ticketPrice}`, 'ether')))
-  }
+    SetIsLoadingContractInfo(true)
 
-  const updateLotteryInfo = async () => {
-    if (localContract) {
-      try {
-        const drawId = parseInt(await localContract.methods.drawId().call())
-        const totalPot = await localContract.methods.prizePoolTotal().call()
-        const numOfTicketsInPool = await localContract.methods.counter().call()
+    try {
+      const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
+      const ticketPrice = await localContract.methods.ticketPrice().call()
 
-        let lotteryHistory = []
-        for (let i = drawId - 1; i >= 0; --i) {
-          const pastDraw = await localContract.methods.pastDraws(i).call()
-          const balls = [...Array(7).keys()].map(i => pastDraw.winningTicket[i])
-          const winningTicket = {
-            balls,
-            powerball: pastDraw.winningTicket[7]
-          }
-          const sanitisedPastDraw = {
-            drawId: parseInt(pastDraw.drawId),
-            drawTime: moment(pastDraw.drawTime * 1000).format('MMMM Do YYYY, hh:mm:ss a'),
-            winningTicket
-          }
-          lotteryHistory.push(sanitisedPastDraw)
-        }
-        
-        setLotteryHistory(lotteryHistory)
-        setLotteryId(drawId)
-        setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
-        setNumOfTicketsInPool(numOfTicketsInPool)
-      } catch (err) {
-        setError(err)
-      }
+      setContractOwner(contractOwner)
+      setIsOwner(address == contractOwner)
+      setTicketPrice(parseInt(ticketPrice))
+    } catch (err) {
+      bulmaToast.toast({message: err.message, type: 'is-danger'})
+    } finally {
+      SetIsLoadingContractInfo(false)
     }
   }
 
-  const getMyTickets = async () => {
+  const updateLotteryInfo = async () => {
+    SetIsLoadingLotteryInfo(true)
     try {
+      const drawId = parseInt(await localContract.methods.drawId().call())
+      const totalPot = await localContract.methods.prizePoolTotal().call()
+      const numOfTicketsInPool = await localContract.methods.counter().call()
+
+      //fetch lottery history
+      let lotteryHistory = []
+      for (let i = drawId - 1; i >= 0; --i) {
+        const pastDraw = await localContract.methods.pastDraws(i).call()
+        const balls = [...Array(7).keys()].map(i => pastDraw.winningTicket[i])
+        const winningTicket = {
+          balls,
+          powerball: pastDraw.winningTicket[7]
+        }
+        const sanitisedPastDraw = {
+          drawId: parseInt(pastDraw.drawId),
+          drawTime: moment(pastDraw.drawTime * 1000).format('MMMM Do YYYY, hh:mm:ss a'),
+          winningTicket
+        }
+        lotteryHistory.push(sanitisedPastDraw)
+      }
+
+      // fetch my tickets in pool
       const ticketsString = await localContract.methods.getMyTickets().call({
         from: address
       })
@@ -142,9 +154,17 @@ const Home = () => {
         tickets.push(formattedTicket)
         i = ticketEnd + 1
       }
+      
+      // update states finally
+      setLotteryId(drawId)
+      setTotalPot(web3.utils.fromWei(totalPot, 'ether'))
+      setNumOfTicketsInPool(numOfTicketsInPool)
+      setLotteryHistory(lotteryHistory)
       setMyTicketsInPool(tickets)
     } catch (err) {
-      setError(err)
+      bulmaToast.toast({message: err.message, type: 'is-danger'})
+    } finally {
+      SetIsLoadingLotteryInfo(false)
     }
   }
 
@@ -182,6 +202,7 @@ const Home = () => {
       })
     }
   
+    // format tickets to be submitted
     let sanitisedTickets = []
     ticketsToPlace.forEach(ticket => {
       ticket.balls = ticket.balls.sort((a, b) => a - b)
@@ -191,6 +212,7 @@ const Home = () => {
       ])
     })
 
+    // check tickets for completeness
     let isTicketsFilled = true
     sanitisedTickets.forEach((ticket, i) => {
       if (ticket.includes(0)) {
@@ -208,14 +230,12 @@ const Home = () => {
       await localContract.methods.play([...sanitisedTickets]).send({
         from: address,
         value: numOfTickets * ticketPrice,
-        // value: web3.utils.toWei(`${numOfTickets * ticketPrice}`, 'ether'),
         gas: 3000000
       })
       bulmaToast.toast({
         message: `Successfully placed ${numOfTickets} tickets.`,
         type: 'is-success'
       })
-      getMyTickets()
       updateLotteryInfo()
     } catch (err) {
       bulmaToast.toast({message: err.message, type: 'is-danger'})
@@ -229,26 +249,25 @@ const Home = () => {
           method: 'eth_accounts'
         })
 
-        /* set web3 instance to the react state */
+        // set web3 instance to the react state
         const web3 = new Web3(window.ethereum)
         setWeb3(web3)
 
-        /* create local copy of the contract */
+        // create local copy of the contract
         const contract = powerballContract(web3)
         setLocalContract(contract)
 
         if (accounts.length != 0) {
           setAddress(accounts[0])
-          updateLotteryInfo()
+          // updateLotteryInfo()
         } else {
           bulmaToast.toast({message: 'No authorised account is found', type: 'is-warning'})
         }
 
-        /* register the accountsChanged event */
+        // register the accountsChanged event
         window.ethereum.on('accountsChanged', (accounts) => {
           setAddress(accounts[0])
           setIsOwner(accounts[0] == contractOwner)
-          console.log(accounts[0] == contractOwner)
         })
       } catch (err) {
         bulmaToast.toast({message: err.message, type: 'is-danger'})
@@ -264,9 +283,9 @@ const Home = () => {
           method: 'eth_requestAccounts'
         })
   
-        /* get the list of accounts */
+        // get the list of accounts
         const accounts = await web3.eth.getAccounts()
-        /* set first account to react state */
+        // set first account to react state
         setAddress(accounts[0])
       } catch (err) {
         bulmaToast.toast({message: err.message, type: 'is-danger'})
@@ -297,7 +316,6 @@ const Home = () => {
         type: 'is-success'
       })
 
-      getMyTickets()
       updateLotteryInfo()
     } catch (err) {
       bulmaToast.toast({message: `Open draw failed with: ${err.message}`, type: 'is-danger'})
@@ -317,11 +335,7 @@ const Home = () => {
     setTicketsToPlace(updatedTickets)
   }
 
-  const checkActiveCell = (ticket, index) => {
-    const ticketNums = [...ticket.balls, ticket.powerball]
-    return ticketNums.findIndex(ball => ball == 0) == index
-  }
-
+  // reusable component
   const ticketInfoHTML = (ticket, isPanelActive=false) => {
     return (
       <div className={styles.gameRowCells}>
@@ -445,7 +459,7 @@ const Home = () => {
                     <div className="field">
                       <div className={styles.formLabel}>Select ticket entries</div>
                       <Collapsible numOfTickets={numOfTickets} ticketsToPlace={ticketsToPlace}
-                        populateTicketInfo={ticketInfoHTML} updateTickets={updateTickets} />
+                        updateTickets={updateTickets} />
                     </div>
                   </section>
                   <section className="selectTickets" id="accordion-tickets">
@@ -472,11 +486,6 @@ const Home = () => {
                     <button className="button is-danger is-light is-medium mt-3" onClick={drawHandler}>Pick Winner</button>
                   </section>)
                 }
-                <section className="mt-6">
-                  <div className="container has-text-danger">
-                    <p>{error.message}</p>
-                  </div>
-                </section>
               </div>
               <div className={`${styles.lotteryInfo} column is-one-third`}>
                 <section>
@@ -492,7 +501,7 @@ const Home = () => {
                                 <span>Lottery #{round.drawId + 1}</span>
                                 <span>{round.drawTime}</span>
                               </div>
-                              {ticketInfoHTML(round.winningTicket)}
+                                <TicketInfo ticket={round.winningTicket} />
                             </div>
                           ))
                         }
@@ -511,7 +520,7 @@ const Home = () => {
                             {
                               myTicketsInPool.map((ticket, i) => (
                                 <div className={styles.ticketEntry} key={`round-${i}`}>
-                                  {ticketInfoHTML(ticket)}
+                                  <TicketInfo ticket={ticket} />
                                 </div>
                               ))
                             }

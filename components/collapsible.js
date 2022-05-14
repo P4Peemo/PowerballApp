@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
+import TicketInfo from './ticket-info'
+
 import styles from '../styles/Collapsible.module.scss'
 
 const Collapsible = (props) => {
     const [activePanel, setActivePanel] = useState(-1)
-    const { numOfTickets, ticketsToPlace, populateTicketInfo, updateTickets } = props
+    const { numOfTickets, ticketsToPlace, updateTickets } = props
 
     const toggleHandler = e => {
         if (e.target.classList.contains(styles.accordion)) {
@@ -115,7 +117,7 @@ const Collapsible = (props) => {
                     <div className={styles.accordionItem} key={`Ticket ${ticketId + 1}`}>
                         <div className={styles.accordion}>
                             <span>Ticket {ticketId + 1}</span>
-                            {populateTicketInfo(ticketsToPlace[ticketId], activePanel == ticketId)}
+                            <TicketInfo ticket={ticketsToPlace[ticketId]} isPanelActive={activePanel == ticketId} />
                         </div>
                         <div className={styles.panel}>
                             <table className="table" style={{ 'margin': '5px auto' }}>

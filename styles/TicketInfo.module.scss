@@ -1,0 +1,40 @@
+.gameRowCells {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+  
+.gameRowCell {
+    display: inline-block;
+    width: 2em;
+    height: 2em;
+    line-height: 2em;
+    text-align: center;
+    margin-right: 10px;
+    border: 1px solid grey;
+    opacity: 0.5;
+    border-radius: 10%;
+  }
+  
+  .powerballCell {
+    display: inline-block;
+    width: 2em;
+    height: 2em;
+    line-height: 2em;
+    text-align: center;
+    border: 1px solid black;  
+    border-radius: 50%;
+    margin-left: 10px;
+    opacity: 0.5;
+  }
+  
+  .selectedCell {
+    border: 1px solid black;
+    opacity: 1;
+  }
+  
+  .activeCell {
+    border: 2px solid black;
+    opacity: 1;
+  }
+  
