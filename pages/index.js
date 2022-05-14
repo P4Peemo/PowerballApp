@@ -79,10 +79,10 @@ const Home = () => {
   }, [address])
 
   const updateContractInfo = async () => {
-    const contractOwner = await localContract.methods.manager().call()
+    const contractOwner = (await localContract.methods.manager().call()).toLowerCase()
     const ticketPrice = await localContract.methods.ticketPrice().call()
     setContractOwner(contractOwner)
-    setIsOwner(address == contractOwner.toLowerCase())
+    setIsOwner(address == contractOwner)
     setTicketPrice(parseInt(ticketPrice))
     // setTicketPrice(parseFloat(web3.utils.fromWei(`${ticketPrice}`, 'ether')))
   }
@@ -223,7 +223,6 @@ const Home = () => {
   }
 
   const checkIfWalletIsConnected = async () => {
-    console.log('check')
     if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
       try {
         const accounts = await window.ethereum.request({
@@ -247,9 +246,9 @@ const Home = () => {
 
         /* register the accountsChanged event */
         window.ethereum.on('accountsChanged', (accounts) => {
-          console.log(accounts)
           setAddress(accounts[0])
-          setIsOwner(accounts[0] == contractOwner.toLowerCase())
+          setIsOwner(accounts[0] == contractOwner)
+          console.log(accounts[0] == contractOwner)
         })
       } catch (err) {
         bulmaToast.toast({message: err.message, type: 'is-danger'})
