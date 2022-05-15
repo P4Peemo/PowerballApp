@@ -69,9 +69,6 @@ const Home = () => {
   // Check if wallet is connected upon loading (once only)
   useEffect(() => {    
     checkIfWalletIsConnected()
-    if (localContract) {
-      updateContractInfo()
-    }
   }, [])
 
   useEffect(() => {
@@ -217,7 +214,7 @@ const Home = () => {
     sanitisedTickets.forEach((ticket, i) => {
       if (ticket.includes(0)) {
         bulmaToast.toast({
-          message: `ticket-${i} contains unselected number(s).`,
+          message: `ticket-${i + 1} contains unselected number(s).`,
           type: 'is-warning'
         })
         isTicketsFilled = false
@@ -266,8 +263,14 @@ const Home = () => {
 
         // register the accountsChanged event
         window.ethereum.on('accountsChanged', (accounts) => {
-          setAddress(accounts[0])
-          setIsOwner(accounts[0] == contractOwner)
+          
+          if (accounts.length == 0) {
+            setAddress(null)
+            setIsOwner(false)
+          } else {
+            setAddress(accounts[0])
+            setIsOwner(accounts[0] == contractOwner)
+          }
         })
       } catch (err) {
         bulmaToast.toast({message: err.message, type: 'is-danger'})
@@ -333,30 +336,6 @@ const Home = () => {
 
     setNumOfTickets(parseInt(e.target.value))
     setTicketsToPlace(updatedTickets)
-  }
-
-  // reusable component
-  const ticketInfoHTML = (ticket, isPanelActive=false) => {
-    return (
-      <div className={styles.gameRowCells}>
-        {
-          [...Array(7).keys()].map(i => (
-            <div className={
-                styles.gameRowCell + (ticket.balls[i] == 0 ? '' : (' ' + styles.selectedCell)) +
-                (isPanelActive && checkActiveCell(ticket, i) ? (' ' + styles.activeCell) : '')
-              } key={`cell-${i+1}`}>
-              {ticket.balls[i] == 0 ? '' : ticket.balls[i]}
-            </div>
-          ))
-        }
-        <div className={
-            styles.powerballCell + (ticket.powerball == 0 ? '' : (' ' + styles.selectedCell)) +
-            (isPanelActive && checkActiveCell(ticket, 7) ? (' ' + styles.activeCell) : '')
-          }>
-          {ticket.powerball == 0 ? 'PB' : ticket.powerball}
-        </div>
-      </div>
-    )    
   }
 
   const updateTickets = (updatedTickets) => {
@@ -461,9 +440,6 @@ const Home = () => {
                       <Collapsible numOfTickets={numOfTickets} ticketsToPlace={ticketsToPlace}
                         updateTickets={updateTickets} />
                     </div>
-                  </section>
-                  <section className="selectTickets" id="accordion-tickets">
-                    <Collapsible />
                   </section>
                 </div>
                 <section className="mt-5" style={{ 'textAlign': 'right' }}>
