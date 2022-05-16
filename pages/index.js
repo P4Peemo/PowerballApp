@@ -382,8 +382,16 @@ const Home = () => {
             }
           </div>
         </nav>
-        <div className="container" style={{ 'margin': '0 auto 1em', 'textAlign': 'right' }}>
-          Contract Owner: {contractOwner}
+        <div className="container" style={{ 'margin': '0 auto 1em', 'display': 'flex', 'fontSize': 'small', 'justifyContent': 'space-between' }}>
+          <span>
+            <i className="fa-solid fa-circle-info" style={{ 'paddingRight': '5px' }}/>
+            All the rules (Prize ratio, Winning Criteria, etc.) for
+            Ethereum Powerball follow the&nbsp;
+            <a style={{ 'textDecoration': 'underline' }} href="https://www.thelott.com/powerball/how-to-play" target="_blank">
+              rules of Aussie Powerball.
+            </a>
+          </span>
+          <span>Contract Owner: {contractOwner}</span>
         </div>
         <div className="container">
           <div className="columns" style={{ 'textAlign': 'center' }}>
