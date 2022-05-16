@@ -66,7 +66,7 @@ contract Powerball {
 
     constructor(uint256 _ticketPrice) {
         manager = msg.sender;
-        ticketPrice = _ticketPrice * 10; // ether to wei
+        ticketPrice = _ticketPrice; // wei
         prizeAllocationRate = [3500, 180, 110, 200, 150, 970, 760, 1500, 2630]; // refer to: https://www.thelott.com/about/prize-pool
     }
 
@@ -184,35 +184,35 @@ contract Powerball {
         uint256 quantityOfWinningNumbers,
         bool isWinningThePowerball
     ) private pure returns (uint256) {
-        uint256 devision = 100; //not win
+        uint256 division = 100; //not win
         if (isWinningThePowerball && quantityOfWinningNumbers == 7) {
-            devision = 0;
+            division = 0;
         }
         if (!isWinningThePowerball && quantityOfWinningNumbers == 7) {
-            devision = 1;
+            division = 1;
         }
         if (isWinningThePowerball && quantityOfWinningNumbers == 6) {
-            devision = 2;
+            division = 2;
         }
         if (!isWinningThePowerball && quantityOfWinningNumbers == 6) {
-            devision = 3;
+            division = 3;
         }
         if (isWinningThePowerball && quantityOfWinningNumbers == 5) {
-            devision = 4;
+            division = 4;
         }
         if (isWinningThePowerball && quantityOfWinningNumbers == 4) {
-            devision = 5;
+            division = 5;
         }
         if (!isWinningThePowerball && quantityOfWinningNumbers == 5) {
-            devision = 6;
+            division = 6;
         }
         if (isWinningThePowerball && quantityOfWinningNumbers == 3) {
-            devision = 7;
+            division = 7;
         }
         if (isWinningThePowerball && quantityOfWinningNumbers == 2) {
-            devision = 8;
+            division = 8;
         }
-        return devision;
+        return division;
     }
 
     // players can select and pay tickets to play.

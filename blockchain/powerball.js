@@ -3,7 +3,7 @@ const powerballAbi = [{"inputs":[{"internalType":"uint256","name":"_ticketPrice"
 const powerballContract = web3 => {
     return new web3.eth.Contract(
         powerballAbi,
-        "0xf321549049Fa14d48Bac8b59a6dD91F7FdC20ECA"
+        "0x3050BfB74e81324564e6fB566b88c2528cc23826"
     )
 }
 
